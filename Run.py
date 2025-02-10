@@ -17,18 +17,28 @@ from functools import reduce
 import plotly.express as px
 import threading
 import json
+import clingodl
 
 import pandas as pd
 import random
 from MyObserver import MyObserver
 
-outputfolder = './data'
 foundModelIndex = 0
 analyzedModelIndex = 0
+all_data_frames = {}
+showDataframes = False
+
+modelAtomTemplates = [
+    {'name':'transport','filter':lambda s: s.name=='transport','columns':['idx','from','to','Freq', 'TR']},
+]
+
+# tr: name: {capacity, co2, cost, speed}
+tr = {'tr1':{10,60,56,3},'tr2':{15,45,42,2}}
 
 class Run():
     hiddenFiles = re.compile('/\.')
     myobs = MyObserver()
+    outputfolder = './data'
 
     def __init__(self):
         global outputfolder
@@ -36,12 +46,12 @@ class Run():
 
         parser.add_argument("-e", "--example", required=False, action="store_true", default=False,
                         help="Considers only the logic programs in the lps/example folder.")
-        parser.add_argument("-o", "--outputfolder", required=False, default=f'./output/output-{datetime.now()}',
-                        help="The folder to put results into.")
+        parser.add_argument("-o", "--outputfolder", required=False, default=f'./output-{datetime.now()}',
+                            help="The folder to put results into.")
         parser.add_argument("-a", "--assertions", required=False, action="store_true", default=False,
                         help="Includes logic-programs contained in the sub-folder 'assertions'.")
-        parser.add_argument("-n", "--models", required=False, default=1,
-                        help="Maximum number of models returned by the tool.")
+        parser.add_argument("-n", "--models", required=False, default=10,
+                            help="Maximum number of models returned by the tool.")
         parser.add_argument("-r", "--random_gen", required=False, default=0,
                         help="Perform random decisions (takes a value between 0 and 1).")
         args = parser.parse_args()
@@ -116,21 +126,61 @@ def on_model(m: clingo.Model):
     global foundModelIndex, analyzedModelIndex, \
         start_time_solving, produced_at_atoms, output_hundredth_model
 
-    produced_at_atoms = list(filter(lambda s: s.name == 'partProducedAtwithW', m.symbols(atoms=True)))
-
-    #if not output_hundredth_model or foundModelIndex % 100 == 0:
-    #    print(
-    #        f"=== New Model [{foundModelIndex}] found after {str(round((time.process_time() - start_time_solving) / 60, 2))} minutes of solving === ")
-    #    print("Analyzing Model ...")
-    #    print(f"=== Optimality proven ? {m.optimality_proven} === ")
-
     printModel(m)
     emptyFolder(f"./{outputfolder}/model_{analyzedModelIndex}")
+
+    print(
+        f"=== New Model [{foundModelIndex}] found after {str(round((time.process_time() - start_time_solving) / 60, 2))} minutes of solving === ")
+    print("Analyzing Model ...")
+    print(f"=== Optimality proven ? {m.optimality_proven} === ")
+
+    print("creating symbols ...")
+    path_symbols = list(filter(lambda s: s.name == 'transport', m.symbols(atoms=True))) + \
+                   list(filter(lambda s: s.name == 'route', m.symbols(atoms=True)))+ \
+                   list(filter(lambda s: s.name == 'transportResource', m.symbols(atoms=True)))
+    print(f"Generated {len(path_symbols)} path symbols")
+
     print("creating model.txt ...")
     with open(f"./{outputfolder}/model_{analyzedModelIndex}/model.txt", "w") as model_file:
             model_file.write(str(m))
 
+    processModel(path_symbols, analyzedModelIndex)
+    analyzedModelIndex+=1
+
+
+def processModel(symbols, index):
+    print(f"Start processing Model {index} ... ")
+    global costs
+
+    print("creating template atoms ...")
+    for modelAtomTemplate in modelAtomTemplates:
+        showModelAtoms(symbols, modelAtomTemplate['name'], modelAtomTemplate['filter'], modelAtomTemplate['columns'],
+                       index)
+
+    #df = pd.read_csv(f"{outputfolder}/model_{index}/transport.csv")
+    #compute_costs(df, index)
+
+def showModelAtoms(s, dataName, symbolFilter, columns, index):
+    global iD_conversion
+
+    filteredSymbols = list(filter(symbolFilter, s))
+    arguments = list(map(lambda s: s.arguments, filteredSymbols))
+    df = pd.DataFrame(data=arguments, columns=columns)
+    all_data_frames[dataName] = df
+
+    df.to_csv(f"{outputfolder}/model_{index}/{dataName}.csv")
+    if showDataframes:
+        print(f"========================== {dataName} ==========================")
+        print(df.to_string())
+
 def printModel(m: clingo.Model):
     print(m)
+
+def compute_costs(df, index):
+
+    costs = df['freq'] #* df['costs']
+    print(f"total costs for {index}: ", costs.sum())
+
+
 
 Run()
