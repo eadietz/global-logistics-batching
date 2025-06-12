@@ -69,8 +69,7 @@ class Run():
     def build_lp_and_solve(self, ex, assertions, models, random_gen):
 
         categories = ["lps/example"] if ex else ["lps/rules", "lps/facts"]
-        categories += ["lps/assertions"] if assertions else categories
-
+        categories = categories + ["lps/assertions"] if assertions else categories
         self.solve_clingo(self.get_programs_by_categories(categories), max_models=models, random_gen=random_gen)
 
     def solve_clingo(self, programs: List[str], max_models=1, random_gen=0):
@@ -86,7 +85,8 @@ class Run():
              "--opt-mode=optN"])
         print(f'Configuration Keys: {ctl.configuration.solve.keys}')
         ctl.register_observer(self.myobs)
-        self.myobs.start()
+        self.myobs.start()#
+
         for program in programs:
             ctl.load(program)
         start_time_grounding = time.process_time()
@@ -125,7 +125,7 @@ def emptyFolder(folder):
 def on_model(m: clingo.Model):
     global foundModelIndex, analyzedModelIndex, \
         start_time_solving, produced_at_atoms, output_hundredth_model
-
+    
     printModel(m)
     emptyFolder(f"./{outputfolder}/model_{analyzedModelIndex}")
 
