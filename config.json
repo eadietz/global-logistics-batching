@@ -6,7 +6,7 @@
     "show_dataframes": true,
     "all_results_folder": "output",
     "timestamp_on_results_folder": false,
-    "example": true,
+    "example": false,
     "output_hundredth_model": false,
     "runs":
     {  

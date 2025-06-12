@@ -233,7 +233,7 @@ def run_asp():
         if args.timestamp_on_results_folder:
             all_results_folder = f'{all_results_folder}_{datetime.now()}'
 
-    categories = ["lps/example"] if example else ["lps/rules", "lps/facts"]
+    categories = ["lps/example"] if example else ["lps/programs"]
    
     hf.emptyFolder(all_results_folder)
     
