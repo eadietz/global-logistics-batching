@@ -1,0 +1,17 @@
+[
+{
+    "timeout": 3600,
+    "max_nr_models": 0,
+    "show_model": true,
+    "show_dataframes": true,
+    "all_results_folder": "output",
+    "timestamp_on_results_folder": false,
+    "example": true,
+    "output_hundredth_model": false,
+    "runs":
+    {  
+    },
+    "__alternatives": 
+    {  }
+}
+]

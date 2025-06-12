@@ -98,9 +98,8 @@ flow((From,To),Part,N):numFlow(N),flow((To,_),Part,D), N<=D} :-route(From,To,_,_
 {packingList(P,TR,N)} :-  transportCapacity(TR,Cap), Cap>=N, partSize(P,N).
 {packingList((P,L),TR,M)}:- packingList(L,TR,T), transportCapacity(TR,Cap), Cap>=M, M=T+N, partSize(P,N).
 
-#show packingList/3. 
-% symmetry breaking
-:- packingList((P1,P2),_,_), productionPlan(P2,P1).
+% symmetry breaking, needs to be extended
+:- packingList((P1,P2),_,_), productionPlan(P1,P2).
 
 {countPartsInL(Part,Part,1)}:- part(Part).
 {countPartsInL((Part,L),Part,V+1)} :- countPartsInL(L,Part,V), packingList(L,_,_).
