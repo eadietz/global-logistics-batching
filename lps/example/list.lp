@@ -1,7 +1,7 @@
 element(1..6).
-listLen(empty, 0).
-listLen(cons(E, L), K + 1) :- element(E); listLen(L, K); K < 5.
-is5List(L) :- listLen(L, 5).
+%listLen(empty, 0).
+%listLen(cons(E, L), K + 1) :- element(E); listLen(L, K); K < 5.
+%is5List(L) :- listLen(L, 5).
 
 num(1..2).
 packingList(p1,tr1,4).
@@ -12,13 +12,18 @@ partSize(p1,4).
 partSize(p2,3).
 
 packingList(P,TR,N) :-  transportCapacity(TR,Cap), Cap>=N, partSize(P,N).
-packingList(cons(P,L),TR,M):- packingList(L,TR,T), transportCapacity(TR,Cap), Cap>=M, M=T+N, partSize(P,N).
+packingList((P,L),TR,M):- packingList(L,TR,T), transportCapacity(TR,Cap), Cap>=M, M=T+N, partSize(P,N).
 
 
+%countPartsInL(Part,Part,1):- part(Part).
+%countPartsInL((Part,L),Part,V1+1) :- countPartsInL(L,Part,V1), packingList(L,_,_).
 
 
-countPartsInL(Part,Part,1):- part(Part).
-countPartsInL((Part,L),Part,V1+1) :- countPartsInL(L,Part,V1), packingList(L,_,_).
+countPartsInL(Part,Part,1):- packingList(Part,_,_), part(Part).
+countPartsInL(Part1,Part2,0):- packingList(Part1,_,_), part(Part2), part(Part1), Part1!=Part2.
+countPartsInL((Head,L),Part,V1+V2) :- countPartsInL(L,Part,V2), countPartsInL(Head,Part,V1), packingList((Head,L),_,_).
+
+%countPartsInL((Part,L),Part,V1+1) :- countPartsInL(L,Part,V1), packingList(L,_,_).
 
 
 

@@ -8,6 +8,9 @@
     "timestamp_on_results_folder": false,
     "example": false,
     "output_hundredth_model": false,
+    "print_details": true,
+    "exit_after_optimal_found": false,
+    "draw": false,
     "runs":
     {  
     },

@@ -11,6 +11,7 @@ import networkx as nx
 from datetime import datetime
 import threading
 import sys
+import plotly.express as px
 
 import helper_functions as hf
 
@@ -34,6 +35,7 @@ RESET = "\033[0m"
 
 showModel = False
 showDataframes = False
+print_details = True
 foundModelIndex = 0
 analyzedModelIndex = 0
 all_data_frames = {}
@@ -41,52 +43,108 @@ costs = []
 modelAtomTemplates = [
        {'name':'location','filter':lambda s: s.name=='location', 'columns':['location']},
       {'name':'part','filter':lambda s: s.name=='part', 'columns':['part']},
-       {'name':'transportFreq', 'filter':lambda s: s.name=='transportFreq', 'columns':['from', 'to', 'TM','pidx', 'freq']},
-        {'name':'packingPattern','filter':lambda s: s.name=='packingPattern', 'columns':['pidx','part', 'tm', 'amount']},
-        {'name':'demandSupply','filter':lambda s: s.name=='demandSupply', 'columns':['part', 'location', 'amount']}
+      {'name':'countPartsInL','filter':lambda s: s.name=='countPartsInL', 'columns':['parts','part','amount']},
+      {'name':'transportLink','filter':lambda s: s.name=='transportLink', 'columns':['from','to','parts','tr','freq']},
+      {'name':'demandSupply','filter':lambda s: s.name=='demandSupply', 'columns':['part', 'location', 'amount']},
+       {'name':'flow','filter':lambda s: s.name=='flow', 'columns':['from' ,'to', 'part', 'amount']},
+       {'name':'transportCO2','filter':lambda s: s.name=='transportCO2', 'columns':['tr' ,'cost']},
+       {'name':'transportCost','filter':lambda s: s.name=='transportCost', 'columns':['tr' ,'cost']},
+       {'name':'transportSpeed','filter':lambda s: s.name=='transportSpeed', 'columns':['tr' ,'cost']}
 ]
 
+def cprint(Text):
+    global print_details
+    if print_details == True:
+        print(Text)
 
+def draw_figures(costs_df):
+
+    df_reversed = costs_df.reindex(index=costs_df.index[::-1]) #costs_df.iloc[::-1].reset_index(drop=True)
+    cprint("drawing picture ...")
+    fig = px.parallel_coordinates(df_reversed)
+    fig.write_image(f'{outputfolder}/foms.png', width=1920, height=1080)
+
+    fig = px.scatter_matrix(
+    costs_df,
+    dimensions=["transportation", "co2", "speed"])
+    fig.write_image(f'{outputfolder}/scatter.png', width=1920, height=1080)
+
+def compute_costs(modelIndex, all_data_frames):
+    global outputfolder, draw
+
+    transportCost_df = all_data_frames["transportCost"]
+    transportCost_dict_org = dict(zip(transportCost_df['tr'].values, transportCost_df['cost'].values))
+    transportCost_dict = {k.name:transportCost_dict_org.get(k).number for k in transportCost_dict_org}
+
+    transportSpeed_df = all_data_frames["transportSpeed"]
+    transportSpeed_dict_org = dict(zip(transportSpeed_df['tr'].values, transportSpeed_df['cost'].values))
+    transportSpeed_dict = {k.name:transportSpeed_dict_org.get(k).number for k in transportSpeed_dict_org}
+
+    transportCO2_df = all_data_frames["transportCO2"]
+    transportCO2_dict_org = dict(zip(transportCO2_df['tr'].values, transportCO2_df['cost'].values))
+    transportCO2_dict = {k.name:transportCO2_dict_org.get(k).number for k in transportCO2_dict_org}
+
+    transport_link_df = all_data_frames["transportLink"]
+
+    transportation_costs = sum(transport_link_df.apply(lambda x:transportCost_dict.get(x['tr'].name)*x['freq'].number, axis=1))
+    co2_costs = sum(transport_link_df.apply(lambda x:transportCO2_dict.get(x['tr'].name)*x['freq'].number, axis=1))
+    transport_speed = sum(transport_link_df.apply(lambda x:transportSpeed_dict.get(x['tr'].name)*x['freq'].number, axis=1))
+
+    cprint("calculating cost ...")
+    cost = {}
+    cost["transportation"] = transportation_costs
+    cost["co2"] = co2_costs
+    cost["speed"] = transport_speed
+    cost['model_id'] = modelIndex
+
+    costs.append(cost)
+
+    cost_df = pd.DataFrame(data=costs, columns=["transportation", "co2", "speed", "model_id"])
+    cost_df.set_index("model_id", inplace=True)
+    cost_df.to_csv(f"{outputfolder}/costs.csv")
+
+    if draw == True:
+        cprint("drawing picture ...")
+        draw_figures(cost_df)
 
 def check_correctness(modelIndex, all_data_frames):
-   
-    packing_pattern_df = all_data_frames["packingPattern"]
+    
     demand_supply_df = all_data_frames["demandSupply"]
-    transport_freq_df = all_data_frames["transportFreq"]
     locations_df = all_data_frames["location"]
     parts_df = all_data_frames["part"]
+    transport_link_df = all_data_frames["transportLink"]
 
     for location in list(locations_df['location']):
       demand_supply_location_df = demand_supply_df.loc[demand_supply_df['location']==location]
       for part in list(parts_df['part']):
-        packing_pattern_part = packing_pattern_df.loc[packing_pattern_df['part']==part]
-        count_in_amount = 0
-        count_out_amount = 0
-        
-        # count amount of this part SUPPLIED/ DEMANDED by this location
-        part_supply_demand_amount = demand_supply_location_df.loc[demand_supply_location_df['part']==part, 'amount'].values 
-        count_supply_demand_amount = int(str(part_supply_demand_amount[0]))
-        
-        # count amount of this part TO this location (incoming)
-        in_idx = transport_freq_df.loc[transport_freq_df['to']==location, ('pidx', 'freq')].values
-
-        if in_idx.any() == True:
-          for (pidx,freq) in in_idx:
-            part_in_amount = packing_pattern_part.loc[packing_pattern_part['pidx']==pidx, 'amount'].values
-            if part_in_amount.size > 0:
-              count_in_amount += int(str(part_in_amount[0])) * int(str(freq)) 
+            total_in = total_out = 0
+            part_supply_demand_amount = demand_supply_location_df.loc[demand_supply_location_df['part']==part, 'amount'].values 
+            count_supply_demand_amount = int(str(part_supply_demand_amount[0]))
             
-        # count amount of this part FROM this location (outgoing)
-        out_idx = transport_freq_df.loc[transport_freq_df['from']==location,  ('pidx', 'freq')].values
-        if out_idx.any() == True:
-          for (pidx,freq) in out_idx:
-            part_out_amount = packing_pattern_part.loc[packing_pattern_part['pidx']==pidx, 'amount'].values
-            if part_out_amount.size > 0:
-              count_out_amount += int(str(part_out_amount[0])) * int(str(freq)) 
-        
-        if not count_out_amount - count_in_amount == count_supply_demand_amount:
-          print(f"+++++++++++++{modelIndex}+++++++++++++++ {location} : {part} {count_out_amount} (out) - {count_in_amount} (in) != {count_supply_demand_amount} (supply/ demand)")
-      
+            out_transport_link_df = transport_link_df.loc[transport_link_df['from']==location].copy()
+            if not out_transport_link_df.empty:
+                out_transport_link_df[f'amount {str(part)}'] = out_transport_link_df['parts'].apply(lambda x: str(x).count(str(part)))
+                out_tl = out_transport_link_df[f'amount {str(part)}'] * out_transport_link_df['freq'].astype(str).astype(int)
+                total_out = out_tl.sum()
+            
+            in_transport_link_df = transport_link_df.loc[transport_link_df['to']==location].copy()
+            if not in_transport_link_df.empty:
+                in_transport_link_df[f'amount {str(part)}'] = in_transport_link_df['parts'].apply(lambda x: str(x).count(str(part)))
+                in_tl = in_transport_link_df[f'amount {str(part)}'] * in_transport_link_df['freq'].astype(str).astype(int)
+                total_in = in_tl.sum()
+
+            if (count_supply_demand_amount + total_in - total_out) != 0:
+                print(f"{YELLOW}============================== Model {modelIndex} does not seem corect: {location}|{part} count_supply_demand_amount: {count_supply_demand_amount}, total_in: {total_in}, total_out: {total_out}:", 
+                    count_supply_demand_amount + total_in - total_out ,  f"=============================={RESET}")
+                print("in_transport_link_df")
+                print(in_transport_link_df)
+                print("out_transport_link_df")
+                print(out_transport_link_df)
+                sys.exit()
+            else:
+                cprint(f"Model {modelIndex} seems correct")
+            
+
 def get_programs_by_categories(categories: list[str]):
     programs = []
     for category in categories:
@@ -109,7 +167,6 @@ def solve_clingo(programs, max_models=1):
     ctl.register_observer(myobs)
     myobs.start()#
 
-    print("programs", programs)
     for program in programs:
         ctl.load(program)
     start_time_grounding = time.process_time()
@@ -124,18 +181,13 @@ def solve_clingo(programs, max_models=1):
     return res
 
 
-def processModel(symbols, modelIndex):
-    global all_data_frames
-    print(f"Start processing Model {modelIndex} ... ")
-    print("creating template atoms ...")
-    for modelAtomTemplate in modelAtomTemplates:
-        showModelAtoms(symbols, modelAtomTemplate['name'], modelAtomTemplate['filter'], modelAtomTemplate['columns'],
-                       modelIndex)
-        
-    print("check correctness ...")
-    #check_correctness(modelIndex, all_data_frames)
-    print(f"Done processing Model {modelIndex} ... ")
-
+def processModel(m, modelIndex):
+            
+    cprint("check correctness ...")
+    check_correctness(modelIndex, all_data_frames)
+    cprint("compute costs ...")
+    compute_costs(modelIndex, all_data_frames)
+    cprint(f"Done processing Model {modelIndex} ... ")
 
 def showModelAtoms(s, dataName, symbolFilter, columns, index):
     global iD_conversion
@@ -152,43 +204,59 @@ def showModelAtoms(s, dataName, symbolFilter, columns, index):
 
 
 def on_model(m: clingo.Model):
-    global start_time_solving, output_hundredth_model, foundModelIndex, analyzedModelIndex, showModel, outputfolder
+    global start_time_solving, output_hundredth_model, foundModelIndex, analyzedModelIndex, outputfolder, exit_after_optimal_found
 
     if not output_hundredth_model or foundModelIndex % 100 == 0:
-        print(
-            f"=== New Model [{foundModelIndex}] found after {str(round((time.process_time() - start_time_solving) / 60, 2))} minutes of solving (Optimality proven: {m.optimality_proven}) === ")
+        cprint(
+                f"=== New Model [{foundModelIndex}] found after {str(round((time.process_time() - start_time_solving) / 60, 2))} minutes of solving (Optimality proven: {m.optimality_proven}) === ")
+        
         
         hf.emptyFolder(f"./{outputfolder}/model_{analyzedModelIndex}")
-        if m.optimality_proven:
-            print(str(m))
-            sys.exit()
+
         with open(f"./{outputfolder}/model_{analyzedModelIndex}/model.txt", "w") as model_file:
             model_file.write(str(m))
-            path_symbols = list(filter(lambda s: s.name == 'packingPattern', m.symbols(atoms=True))) + \
-                        list(filter(lambda s: s.name == 'transportFreq', m.symbols(atoms=True))) + \
-                        list(filter(lambda s: s.name == 'location', m.symbols(atoms=True))) + \
-                        list(filter(lambda s: s.name == 'demandSupply', m.symbols(atoms=True)))+ \
-                        list(filter(lambda s: s.name == 'part', m.symbols(atoms=True)))
-            print(f"Generated {len(path_symbols)} path symbols")
+        
+        path_symbols = []
+        for name in [next(iter(d.values())) for d in modelAtomTemplates]:
+            path_symbols += list(filter(lambda s: s.name == name, m.symbols(atoms=True)))
+        cprint(f"Generated {len(path_symbols)} path symbols")
 
-            processModel(path_symbols, foundModelIndex)
+        cprint(f"Start processing Model {foundModelIndex} ... ")
+        cprint("creating template atoms ...")
+        for modelAtomTemplate in modelAtomTemplates:
+            showModelAtoms(path_symbols, modelAtomTemplate['name'], modelAtomTemplate['filter'], modelAtomTemplate['columns'],
+                        foundModelIndex)
+    
+        #thread = threading.Thread(target=processModel, args=(m, analyzedModelIndex,), daemon=False)
+        #thread.start()
+        processModel(m, foundModelIndex)
 
-            #path_df = ...
-            #fOMs = m.cost
-            #thread = threading.Thread(target=processModel, args=(m, path_df, fOMs, analyzedModelIndex,), daemon=False)
-            #thread.start()
+        if m.optimality_proven:
+            print(
+                f"=== Optimal model [{foundModelIndex}] found after {str(round((time.process_time() - start_time_solving) / 60, 2))} minutes of solving (Optimality proven: {m.optimality_proven}) === ")
+            
+            if exit_after_optimal_found:
+                print(str(m))
+                costs_df = pd.read_csv(f"{outputfolder}/costs.csv")
+                draw_figures(costs_df)
+                sys.exit()
 
         analyzedModelIndex += 1 
 
     foundModelIndex += 1
 
 def run_asp(): 
-    global output_hundredth_model, outputfolder, start_time_solving, ctl, foundModelIndex, analyzedModelIndex, costs, showModel
+    global output_hundredth_model, outputfolder, start_time_solving, ctl, \
+    foundModelIndex, analyzedModelIndex, showModel, print_details, \
+    exit_after_optimal_found, draw
   
     parser = argparse.ArgumentParser(description="Runs logic-programs in sub-folders 'facts' and 'rules'.")
     parser.add_argument("-t", "--timeout", required=False, default=100, type=int, help="time out.")
     parser.add_argument("-d", "--details", required=False, default=False, help="show details on configuration.")
     
+    parser.add_argument("-f", "--draw", required=False, default=False, help="draw figures while running.")
+    parser.add_argument("-eo", "--exit_after_optimal_found", required=False, default=True, help="Exits after first optimal model is found")
+    parser.add_argument("-p", "--print_details", required=False, default=True, help="Prints details to each model found")
     parser.add_argument("-n", "--models", required=False, default=1,
                         help="Maximum number of models returned by the tool.")
     parser.add_argument("-o", "--outputfolder", required=False, default=f'./output-{datetime.now()}', help="The folder to put results into.")
@@ -218,6 +286,9 @@ def run_asp():
         output_hundredth_model = json_data["output_hundredth_model"]
         heuristics_runs = json_data["runs"]
         all_results_folder = f'{json_data["all_results_folder"]}'
+        print_details = f'{json_data["print_details"]}'
+        exit_after_optimal_found = f'{json_data["exit_after_optimal_found"]}'
+        draw = f'{json_data["draw"]}'
         if json_data["timestamp_on_results_folder"]:
             all_results_folder = f'{all_results_folder}_{datetime.now()}'
     else:
@@ -229,6 +300,9 @@ def run_asp():
         output_hundredth_model = args.output_hundredth_model
         heuristics_runs = args.heuristics
         json_file = args.json_file
+        print_details = args.print_details
+        exit_after_optimal_found = args.exit_after_optimal_found
+        draw = args.draw
         all_results_folder = F'{args.outputfolder}'
         if args.timestamp_on_results_folder:
             all_results_folder = f'{all_results_folder}_{datetime.now()}'
@@ -239,18 +313,16 @@ def run_asp():
     
     if heuristics_runs:
         for heuristic_name, program_folders in heuristics_runs.items():
-        
-            costs = []
-            print(f"{YELLOW}============================== heuristic: {heuristic_name} ============================== {RESET}") 
+            print(f"{YELLOW}============================== heuristic: {heuristic_name} =============================={RESET}") 
             outputfolder = f'{all_results_folder}/{heuristic_name}_results'
             hf.emptyFolder(outputfolder)
-            categories = program_folders 
+            categories = program_folders
             foundModelIndex = 0
             analyzedModelIndex = 0
-            solve_clingo(get_programs_by_categories(categories), timeout=timeout)
+            solve_clingo(get_programs_by_categories(categories), timeout=timeout, print_details=print_details)
             gc.collect()  
     else:  
-        print(f"{YELLOW}============================== {categories} ============================== {RESET}") 
+        print(f"{YELLOW}============================== {categories} =============================={RESET}") 
         outputfolder = f'{all_results_folder}'
         solve_clingo(get_programs_by_categories(categories), max_nr_models)
         gc.collect()  
