@@ -17,8 +17,7 @@ def reformulate(text):
 def write_locations(file_out):
     global location_name_id_mapping
 
-    file_out.write("% ----------------------- locations -----------------------")
-    file_out.write("\n")
+    file_out.write("% ----------------------- locations -----------------------\n")
 
     with open(f"./airbus/datalocal/locations.json", 'r') as filehandle:
         json_data = json.load(filehandle)
@@ -34,8 +33,7 @@ def write_locations(file_out):
 
 def write_tr_infos(file_out):
     global tr_name_id_mapping, tr_id_cost_mapping
-    file_out.write("\n")
-    file_out.write("% ----------------------- transport resources")
+    file_out.write("\n% ----------------------- transport resources -----------------------\n")
     with open(f"./airbus/datalocal/transportResources.json", 'r') as filehandle:
         json_data = json.load(filehandle)
         names = list(map(lambda x: f"transportResource({reformulate(x.get('name'))}).\n", json_data))
@@ -67,8 +65,7 @@ def write_tr_infos(file_out):
 def write_part_infos(file_out):
     global tr_name_id_mapping, part_name_id_mapping
 
-    file_out.write("\n")
-    file_out.write("% ----------------------- parts")
+    file_out.write("\n% ----------------------- parts -----------------------\n")
     with open(f"./airbus/datalocal/products.json", 'r') as filehandle:
         json_data = json.load(filehandle)
         names = list(map(lambda x: f"part({reformulate(x.get('name'))}).\n", json_data))
@@ -94,8 +91,7 @@ def write_part_infos(file_out):
 
 def write_demand_offer(file_out):
     global part_name_id_mapping, location_name_id_mapping
-    file_out.write("\n")
-    file_out.write("% ----------------------- demand and offers ")
+    file_out.write("\n% ----------------------- demands and offers -----------------------\n")
     with open(f"./airbus/datalocal/recipeAllocations.json", 'r') as filehandle:
         json_data = json.load(filehandle)
 
@@ -114,13 +110,15 @@ def write_demand_offer(file_out):
                 location_name = location_name_id_mapping.get(location_id)
                 rate = item.get("rate")
                 demands.append(f"demand({part_name},{location_name},{rate}).\n")
+                demands.append(f"demandSupply({part_name},{location_name},-{rate}).\n")
                 demand_sum += rate
  
             offer_locations = part.get("supplierLocations")
             for item in offer_locations:
                 location_name = location_name_id_mapping.get(item.get("locationId"))
                 rate = item.get("rate")
-                offers.append(f"demand({part_name},{location_name},{rate}).\n")
+                offers.append(f"offer({part_name},{location_name},{rate}).\n")
+                offers.append(f"demandSupply({part_name},{location_name},{rate}).\n")
                 offers_sum += rate
 
         print("dem/ off", demand_sum, offers_sum)
@@ -131,8 +129,7 @@ def write_demand_offer(file_out):
 def write_routes(file_out):
     global tr_name_id_mapping, location_name_id_mapping, tr_id_cost_mapping
 
-    file_out.write("\n")
-    file_out.write("% ----------------------- routest ")
+    file_out.write("\n% ----------------------- routes -----------------------\n")
     with open(f"./airbus/datalocal/transportRoutes.json", 'r') as filehandle:
         json_data = json.load(filehandle)
         routes = []
@@ -155,3 +152,8 @@ with open(f"./lps/facts.lp", 'w') as file_out:
     write_part_infos(file_out)
     write_demand_offer(file_out)
     write_routes(file_out)
+
+    file_out.write('\n')
+    file_out.write("% ----------------------- harbors -----------------------\n")
+    file_out.write("harbor(naplesHarbor;marseilleHarbor;montoirHarbor;tunisHarbor;mobileHarbor;dunkerqueHarbor;gruenendeichHarbor;taichungHarbor;shanghaiHarbor;hamburgHarbor;gibraltarHarbor;portoHarbor;tianjinHarbor;casablancaHarbor;sacheonHarbor;stNazaire;houstonHarbor;savannaHarbor).")
+
