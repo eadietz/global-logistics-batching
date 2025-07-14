@@ -149,7 +149,7 @@ def write_routes(file_out):
 
         file_out.writelines(routes)
 
-with open(f"./lps/airbus-facts.lp", 'w') as file_out:
+with open(f"./lps/facts.lp", 'w') as file_out:
     write_locations(file_out)
     write_tr_infos(file_out)
     write_part_infos(file_out)
