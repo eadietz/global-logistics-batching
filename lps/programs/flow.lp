@@ -3,8 +3,8 @@ demandSupply(P,L,0) :- not offer(P,L,_), not demand(P,L,_), part(P), location(L)
 demandSupply(P,L,O) :- offer(P,L,O).
 demandSupply(P,L,D) :- demand(P,L,M), D=M*-1.
 
-#const maxNrParts = 15.
-#const maxFreq = 15.
+#const maxNrParts = 50.
+#const maxFreq = 50.
 
 numFlow(1..maxNrParts).
 num(0..maxFreq).
@@ -36,8 +36,8 @@ countPartsInL((Head,L),Part,V1+V2) :- countPartsInL(L,Part,V2), countPartsInL(He
 1{transportLink(From,To, L, TR, Freq): packingList(L,TR,_), countPartsInL(L,Part,V),num(V),V>0,num(Freq)} :- flow(From,To,Part,T).
 
 % make sure that transport links conform with flow
-:- T!=#sum{N*Freq,L,TR:transportLink(From,To, L, TR, Freq),countPartsInL(L,Part,N)},flow(From,To,Part,T).
-:- 0!=#sum{N*Freq,L,TR:transportLink(From,To, L, TR, Freq),countPartsInL(L,Part,N)}, not flow(From,To,Part,_), location(From), location(To), part(Part).
+%:- T!=#sum{N*Freq,L,TR:transportLink(From,To, L, TR, Freq),countPartsInL(L,Part,N)},flow(From,To,Part,T).
+%:- 0!=#sum{N*Freq,L,TR:transportLink(From,To, L, TR, Freq),countPartsInL(L,Part,N)}, not flow(From,To,Part,_), location(From), location(To), part(Part).
 
 :- transportLink(From,To, L, TR, Freq1), transportLink(From,To, L, TR, Freq2), Freq1!=Freq2.
 
