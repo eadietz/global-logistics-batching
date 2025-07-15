@@ -11,6 +11,7 @@
     "print_details": true,
     "exit_after_optimal_found": false,
     "draw": false,
+    "check_correctness": false,
     "runs":
     {  
     },

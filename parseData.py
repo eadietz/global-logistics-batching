@@ -156,4 +156,4 @@ with open(f"./lps/facts.lp", 'w') as file_out:
     file_out.write('\n')
     file_out.write("% ----------------------- harbors -----------------------\n")
     file_out.write("harbor(naplesHarbor;marseilleHarbor;montoirHarbor;tunisHarbor;mobileHarbor;dunkerqueHarbor;gruenendeichHarbor;taichungHarbor;shanghaiHarbor;hamburgHarbor;gibraltarHarbor;portoHarbor;tianjinHarbor;casablancaHarbor;sacheonHarbor;stNazaire;houstonHarbor;savannaHarbor).")
-
+    #file_out.write("transportResource(intrasite). transportCO2(intrasite,0). transportCost(intrasite,0). transportCapacity(intrasite,148434000000000). ")

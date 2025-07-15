@@ -182,9 +182,11 @@ def solve_clingo(programs, max_models=1):
 
 
 def processModel(m, modelIndex):
-            
-    cprint("check correctness ...")
-    check_correctness(modelIndex, all_data_frames)
+    global check_correctness_var
+    
+    if check_correctness_var:        
+        cprint("check correctness ...")
+        check_correctness(modelIndex, all_data_frames)
     cprint("compute costs ...")
     compute_costs(modelIndex, all_data_frames)
     cprint(f"Done processing Model {modelIndex} ... ")
@@ -248,11 +250,12 @@ def on_model(m: clingo.Model):
 def run_asp(): 
     global output_hundredth_model, outputfolder, start_time_solving, ctl, \
     foundModelIndex, analyzedModelIndex, showModel, print_details, \
-    exit_after_optimal_found, draw
+    exit_after_optimal_found, draw, check_correctness_var
   
     parser = argparse.ArgumentParser(description="Runs logic-programs in sub-folders 'facts' and 'rules'.")
     parser.add_argument("-t", "--timeout", required=False, default=100, type=int, help="time out.")
     parser.add_argument("-d", "--details", required=False, default=False, help="show details on configuration.")
+    parser.add_argument("-c", "--check_correctness_var", required=False, default=False, help="checks correctness on multi batching.")
     
     parser.add_argument("-f", "--draw", required=False, default=False, help="draw figures while running.")
     parser.add_argument("-eo", "--exit_after_optimal_found", required=False, default=True, help="Exits after first optimal model is found")
@@ -289,6 +292,7 @@ def run_asp():
         print_details = f'{json_data["print_details"]}'
         exit_after_optimal_found = f'{json_data["exit_after_optimal_found"]}'
         draw = f'{json_data["draw"]}'
+        check_correctness_var = f'{json_data["check_correctness"]}'
         if json_data["timestamp_on_results_folder"]:
             all_results_folder = f'{all_results_folder}_{datetime.now()}'
     else:
@@ -304,6 +308,7 @@ def run_asp():
         exit_after_optimal_found = args.exit_after_optimal_found
         draw = args.draw
         all_results_folder = F'{args.outputfolder}'
+        check_correctness_var = args.check_correctness
         if args.timestamp_on_results_folder:
             all_results_folder = f'{all_results_folder}_{datetime.now()}'
 
