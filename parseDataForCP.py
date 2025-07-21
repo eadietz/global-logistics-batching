@@ -163,7 +163,7 @@ def write_routes(file_out):
         transport_links = f'\n{indent}{indent}'.join(transport_links_list)
         file_out.write(f'{indent}transport_links_list = [{transport_links}]')
 
-with open(f"./lps/factsCP.lp", 'w') as file_out:
+with open(f"./lps/factsCP.py", 'w') as file_out:
     file_out.write('from multibatching.problem import * \n\n')
     file_out.write('def init_instance(): \n')
     write_tr_infos(file_out)

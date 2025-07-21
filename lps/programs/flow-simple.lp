@@ -39,7 +39,7 @@ flow(From,To,Part,N): O<=D, N<=O, numFlow(N)}1 :- offer(Part,From,O), demand(Par
 
 1{routeflow(From,To,Part,N,TR):
 direct(From,To,Part,TR);
-routeflow(From,(Via1,To),Part,(N,N),(TR1,TR2)): via1(From,(Via1,To),Part,(TR1,TR2));
+%routeflow(From,(Via1,To),Part,(N,N),(TR1,TR2)): via1(From,(Via1,To),Part,(TR1,TR2));
 routeflow(From,(Via1,Via2,To),Part,(N,N,N),(TR1,TR2,TR3)):via2(From,(Via1,Via2,To),Part,(TR1,TR2,TR3))}1
 :- flow(From,To,Part,N), From!=To.
 
