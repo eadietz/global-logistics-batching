@@ -54,7 +54,7 @@ modelAtomTemplates = [
 
 def cprint(Text):
     global print_details
-    if print_details == True:
+    if print_details:
         print(Text)
 
 def draw_figures(costs_df):
@@ -182,14 +182,15 @@ def solve_clingo(programs, max_models=1):
 
 
 def processModel(m, modelIndex):
-    global check_correctness_var
+    global check_correctness_var, compute_costs_var
     
-    if check_correctness_var:        
+    if check_correctness_var == True:        
         cprint("check correctness ...")
         check_correctness(modelIndex, all_data_frames)
-    cprint("compute costs ...")
-    compute_costs(modelIndex, all_data_frames)
-    cprint(f"Done processing Model {modelIndex} ... ")
+    if compute_costs_var == True:   
+        cprint("compute costs ...")
+        compute_costs(modelIndex, all_data_frames)
+        cprint(f"Done processing Model {modelIndex} ... ")
 
 def showModelAtoms(s, dataName, symbolFilter, columns, index):
     global iD_conversion
@@ -206,7 +207,7 @@ def showModelAtoms(s, dataName, symbolFilter, columns, index):
 
 
 def on_model(m: clingo.Model):
-    global start_time_solving, output_hundredth_model, foundModelIndex, analyzedModelIndex, outputfolder, exit_after_optimal_found
+    global start_time_solving, output_hundredth_model, foundModelIndex, analyzedModelIndex, outputfolder, exit_after_optimal_found, draw, compute_costs_var
 
     if not output_hundredth_model or foundModelIndex % 100 == 0:
         cprint(
@@ -239,8 +240,10 @@ def on_model(m: clingo.Model):
             
             if exit_after_optimal_found:
                 print(str(m))
-                costs_df = pd.read_csv(f"{outputfolder}/costs.csv")
-                draw_figures(costs_df)
+                if compute_costs_var == True:
+                    costs_df = pd.read_csv(f"{outputfolder}/costs.csv")
+                    if draw:
+                        draw_figures(costs_df)
                 sys.exit()
 
         analyzedModelIndex += 1 
@@ -250,13 +253,14 @@ def on_model(m: clingo.Model):
 def run_asp(): 
     global output_hundredth_model, outputfolder, start_time_solving, ctl, \
     foundModelIndex, analyzedModelIndex, showModel, print_details, \
-    exit_after_optimal_found, draw, check_correctness_var
+    exit_after_optimal_found, draw, check_correctness_var, compute_costs_var
   
     parser = argparse.ArgumentParser(description="Runs logic-programs in sub-folders 'facts' and 'rules'.")
     parser.add_argument("-t", "--timeout", required=False, default=100, type=int, help="time out.")
     parser.add_argument("-d", "--details", required=False, default=False, help="show details on configuration.")
-    parser.add_argument("-c", "--check_correctness_var", required=False, default=False, help="checks correctness on multi batching.")
-    
+    parser.add_argument("-ch", "--check_correctness", required=False, default=False, help="checks correctness on multi batching.")
+    parser.add_argument("-co", "--compute_costs", required=False, default=False, help="compute costs on multi batching.")
+
     parser.add_argument("-f", "--draw", required=False, default=False, help="draw figures while running.")
     parser.add_argument("-eo", "--exit_after_optimal_found", required=False, default=True, help="Exits after first optimal model is found")
     parser.add_argument("-p", "--print_details", required=False, default=True, help="Prints details to each model found")
@@ -293,6 +297,8 @@ def run_asp():
         exit_after_optimal_found = f'{json_data["exit_after_optimal_found"]}'
         draw = f'{json_data["draw"]}'
         check_correctness_var = f'{json_data["check_correctness"]}'
+        compute_costs_var = f'{json_data["compute_costs"]}'
+
         if json_data["timestamp_on_results_folder"]:
             all_results_folder = f'{all_results_folder}_{datetime.now()}'
     else:
@@ -309,6 +315,7 @@ def run_asp():
         draw = args.draw
         all_results_folder = F'{args.outputfolder}'
         check_correctness_var = args.check_correctness
+        compute_costs_var = args.compute_costs
         if args.timestamp_on_results_folder:
             all_results_folder = f'{all_results_folder}_{datetime.now()}'
 

@@ -23,36 +23,53 @@ transportCapacity(intrasite,2000000000000).
 partTR(Part,intrasite) :- part(Part).
 
 root(eARFullFuselage).
-1{flow(From,(),Part,N):offer(Part,From,N)}1 :- offer(Part,From,N), root(Part).
+
+1{transport(From,From,intrasite,Part):offer(Part,From,N)}1 :- offer(Part,From,N), root(Part).
+
+1{flow(From,To,Part,N): D<=O, N<=D, numFlow(N);
+flow(From,To,Part,N): O<=D, N<=O, numFlow(N)}1 :- offer(Part,From,O), demand(Part,To,D). 
+
+%:- DS!=#sum{N,From:flow(From,Loc,Part,N)}, demand(Part,Loc,DS).
+%:- DS!=#sum{N,To:flow(Loc,To,Part,N)}, offer(Part,Loc,DS).
 
 
-1{flowDO(From,To,Part,N): D<=O, N<=D, numFlow(N);
-flowDO(From,To,Part,N): O<=D, N<=O, numFlow(N)}1 :- offer(Part,From,O), demand(Part,To,D). 
+{direct(From,To,Part,TR)} :- route(From,To,TR,_,_), demand(Part,To,_), offer(Part,From,_).
+{via1(From,(Via1,To),Part,(TR1,TR2))} :-  route(From,Via1,TR1,_,_), route(Via1,To,TR2,_,_), harbor(Via1), demand(Part,To,_), offer(Part,From,_).
+{via2(From,(Via1,Via2,To),Part,(TR1,TR2,TR3))} :-  route(From,Via1,TR1,_,_), route(Via1,Via2,TR2,_,_), harbor(Via1), harbor(Via2), route(Via2,To,TR3,_,_),  offer(Part,From,_), demand(Part,To,_).
 
-#show flowDO/4.
-%:- not flowDO(From,_,Part,_), offer(Part,From,O).
+1{routeflow(From,To,Part,N,TR):
+direct(From,To,Part,TR);
+routeflow(From,(Via1,To),Part,(N,N),(TR1,TR2)): via1(From,(Via1,To),Part,(TR1,TR2));
+routeflow(From,(Via1,Via2,To),Part,(N,N,N),(TR1,TR2,TR3)):via2(From,(Via1,Via2,To),Part,(TR1,TR2,TR3))}1
+:- flow(From,To,Part,N), From!=To.
 
-direct(From,To,Part) :- route(From,To,_,_,_), demand(Part,To,_), offer(Part,From,_).
-via1(From,(Via1,To),Part) :-  route(From,Via1,_,_,_), route(Via1,To,_,_,_), demand(Part,To,_), offer(Part,From,_).
-via2(From,(Via1,Via2,To),Part) :-  route(From,Via1,_,_,_), route(Via1,Via2,_,_,_), route(Via2,To,_,_,_),  
-                                           offer(Part,From,_), demand(Part,To,_).
-        
+#show routeflow/5.
+%1{transport(From,To,TR,B): assign(Part,TR,B,M), binByTR(TR,B), routeflow(From,To,Part,N); 
+%transport(From,(Via1,To),(TR1,TR2),(B1,B2)): routeflow(From,(Via1,To),Part,N),assign(Part,TR1,B1,M), binByTR(T1,B1),assign(Part,TR2,B2,M), binByTR(T2,B2);
+%transport(From,(Via1,Via2,To),(TR1,TR2,TR3),(B1,B2,B3)):routeflow(From,(Via1,Via2,To)), assign(Part,TR1,B1,M), binByTR(T1,B1),assign(Part,TR2,B2,M), 
+%binByTR(T2,B2),assign(Part,TR3,B3,M), binByTR(T1,B3)
+%}1 :- routeflow(From,To,Part,N).
 
-%packingList(P,TR,N):-  transportCapacity(TR,Cap), Cap>=N, partSize(P,N).
-%packingList((P,L),TR,M):- packingList(L,TR,T), transportCapacity(TR,Cap), Cap>=M, M=T+N, partSize(P,N).
-%#show packingList/3.
+	
+#show transport/4.
 
-%countPartsInL(Part,Part,1):- packingList(Part,_,_), part(Part).
-%countPartsInL(Part1,Part2,0):- packingList(Part1,_,_), part(Part2), part(Part1), Part1!=Part2.
-%countPartsInL((Head,L),Part,V1+V2) :- countPartsInL(L,Part,V2), countPartsInL(Head,Part,V1), packingList((Head,L),_,_).
+bin(1).
+num(1..5).
 
-1{flow(From,To,Part,N):
-direct(From,To,Part);
-flow(From,(Via1,To),Part,N): via1(From,(Via1,To),Part);
-flow(From,(Via1,Via2,To),Part,(N,N,N)):via2(From,(Via1,Via2,To),Part)}1
-:- flowDO(From,To,Part,N).
+binByTR(TR,B):- bin(B),transportCapacity(TR,C), C>0.
 
-#show flow/4.
+:- binByTR(TR,B), transportCapacity(TR,C), C<#sum{N*Size,Part:assign(Part,TR,B,N),partSize(Part,Size)}, C>0.
+
+{assign(Part,TR,B,N)} :- binByTR(TR,B),num(N),part(Part).
+
+#show assign/4.
+%#maximize{B,N,TR:assign(Part,TR,B,N)}.
+
+ 
+       
+%#show routeflow/4.
+
+%#show flow/4.
 %:- flow(From,_,Part,N), offer(Part,From,O), O<N.
 %:- flow(_,To,Part,N), demand(Part,From,D), N>D.
 %:- flow(From,Part,(Via1,Via2,To),(N,M,P)), offer(Part,From,O), O<N.
@@ -69,7 +86,7 @@ flow(From,(Via1,Via2,To),Part,(N,N,N)):via2(From,(Via1,Via2,To),Part)}1
 %:- offer(Part,From,_), not directFlow(From,_,Part).
 
 % make sure that flow constraints hold
-:- DS!=#sum{N,From:directFlow(From,Loc,Part,N)}, demandSupply(Part,Loc,DS), DS<0.
+%:- DS!=#sum{N,From:directFlow(From,Loc,Part,N)}, demandSupply(Part,Loc,DS), DS<0.
 
 %#show directFlow/4.
 %#show demandSupply/3.

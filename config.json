@@ -12,6 +12,7 @@
     "exit_after_optimal_found": false,
     "draw": false,
     "check_correctness": false,
+    "compute_costs": false,
     "runs":
     {  
     },
