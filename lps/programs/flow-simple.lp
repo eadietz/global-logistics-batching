@@ -2,7 +2,7 @@
 %demandSupply(P,L,O) :- offer(P,L,O).
 %demandSupply(P,L,D) :- demand(P,L,M), D=M*-1.
 
-#const maxNrParts = 53.
+#const maxNrParts = 200.
 numFlow(1..maxNrParts).
 
 % constraints
@@ -22,48 +22,61 @@ transportCost(intrasite,0).
 transportCapacity(intrasite,2000000000000).
 partTR(Part,intrasite) :- part(Part).
 
-root(eARFullFuselage).
 
-1{transport(From,From,intrasite,Part):offer(Part,From,N)}1 :- offer(Part,From,N), root(Part).
+partTR(section2,TR) :- transportResource(TR).
 
-1{flow(From,To,Part,N): D<=O, N<=D, numFlow(N);
-flow(From,To,Part,N): O<=D, N<=O, numFlow(N)}1 :- offer(Part,From,O), demand(Part,To,D). 
-
-%:- DS!=#sum{N,From:flow(From,Loc,Part,N)}, demand(Part,Loc,DS).
-%:- DS!=#sum{N,To:flow(Loc,To,Part,N)}, offer(Part,Loc,DS).
+root(s123456FullFuselage). 
 
 
-{direct(From,To,Part,TR)} :- route(From,To,TR,_,_), demand(Part,To,_), offer(Part,From,_).
-{via1(From,(Via1,To),Part,(TR1,TR2))} :-  route(From,Via1,TR1,_,_), route(Via1,To,TR2,_,_), harbor(Via1), demand(Part,To,_), offer(Part,From,_).
-{via2(From,(Via1,Via2,To),Part,(TR1,TR2,TR3))} :-  route(From,Via1,TR1,_,_), route(Via1,Via2,TR2,_,_), harbor(Via1), harbor(Via2), route(Via2,To,TR3,_,_),  offer(Part,From,_), demand(Part,To,_).
+1{flow(To,To,Part,D)}1 :- demand(To,Part,D), root(Part).
+1{flow(From,To,Part,N):numFlow(N),N<=O, N<=D}1 :-offer(From,Part,O), demand(To,Part,D).
+
+1{flow(From,To,Part,N): numFlow(N)}1 :- offer(Part,From,O), demand(Part,To,D). %, not root(Part). 
+
+:- DS!=#sum{N,From:flow(From,Loc,Part,N)}, demand(Part,Loc,DS), root(Part).
+:- DS!=#sum{N,To:flow(Loc,To,Part,N)}, offer(Part,Loc,DS), root(Part).
+
+{direct(From,To,Part,TR)} :- route(From,To,TR,_,_), demand(Part,To,_), offer(Part,From,_). %, partTR(Part,TR).
+{via1(From,(Via1,To),Part,(TR1,TR2))} :-  route(From,Via1,TR1,_,_), route(Via1,To,TR2,_,_), harbor(Via1), demand(Part,To,_), offer(Part,From,_). %,partTR(Part,TR1),partTR(Part,TR2).
+{via2(From,(Via1,Via2,To),Part,(TR1,TR2,TR3))} :-  route(From,Via1,TR1,_,_), route(Via1,Via2,TR2,_,_), harbor(Via1), harbor(Via2), route(Via2,To,TR3,_,_),  
+offer(Part,From,_), demand(Part,To,_). %,partTR(Part,TR1),partTR(Part,TR2),partTR(Part,TR3).
 
 1{routeflow(From,To,Part,N,TR):
 direct(From,To,Part,TR);
-%routeflow(From,(Via1,To),Part,(N,N),(TR1,TR2)): via1(From,(Via1,To),Part,(TR1,TR2));
+routeflow(From,(Via1,To),Part,(N,N),(TR1,TR2)): via1(From,(Via1,To),Part,(TR1,TR2));
 routeflow(From,(Via1,Via2,To),Part,(N,N,N),(TR1,TR2,TR3)):via2(From,(Via1,Via2,To),Part,(TR1,TR2,TR3))}1
 :- flow(From,To,Part,N), From!=To.
 
 #show routeflow/5.
-%1{transport(From,To,TR,B): assign(Part,TR,B,M), binByTR(TR,B), routeflow(From,To,Part,N); 
-%transport(From,(Via1,To),(TR1,TR2),(B1,B2)): routeflow(From,(Via1,To),Part,N),assign(Part,TR1,B1,M), binByTR(T1,B1),assign(Part,TR2,B2,M), binByTR(T2,B2);
-%transport(From,(Via1,Via2,To),(TR1,TR2,TR3),(B1,B2,B3)):routeflow(From,(Via1,Via2,To)), assign(Part,TR1,B1,M), binByTR(T1,B1),assign(Part,TR2,B2,M), 
-%binByTR(T2,B2),assign(Part,TR3,B3,M), binByTR(T1,B3)
-%}1 :- routeflow(From,To,Part,N).
+%#show binByTR/2.
+ 
+%1{assign(Part,TR,B):binByTR(TR,B),routeflow(From,To,Part,N,TR),location(To);
+%assign(Part,TR,B):binByTR(TR,B),routeflow(From,(Via1,To),Part,(N,N),(TR1,TR2)),location(To);
+%assign(Part,TR,B):binByTR(TR,B),routeflow(From,(Via1,Via2,To),Part,(N,N,N),(TR1,TR2,TR3)),
+%location(To)}1 :- flow(From,To,Part,N), From!=To.
+%1{transportLink(From,To,TR,B): assign(Part,TR,B), binByTR(TR,B)
+%}1 :- routeflow(From,To,Part,N,TR), location(To).%
 
-	
-#show transport/4.
+%1{transportLink(From,(Via1,To),(TR1,TR2),(B1,B2)): assign(Part,TR1,B1), binByTR(T1,B1),assign(Part,TR2,B2), binByTR(TR2,B2)
+%}1 :- routeflow(From,(Via1,To),Part,(N,N),(TR1,TR2)), location(To).
 
-bin(1).
-num(1..5).
+%1{transportLink(From,(Via1,Via2,To),(TR1,TR2,TR3),(B1,B2,B3)):assign(Part,TR1,B1), binByTR(TR1,B1),assign(Part,TR2,B2), 
+%binByTR(T2,B2),assign(Part,TR3,B3), binByTR(TR3,B3)
+%}1 :- routeflow(From,(Via1,Via2,To),Part,(N,N,N),(TR1,TR2,TR3)), location(To).
+
+%#show transportLink/4.
+
+bin(1..15).  
+num(1..15).
 
 binByTR(TR,B):- bin(B),transportCapacity(TR,C), C>0.
 
-:- binByTR(TR,B), transportCapacity(TR,C), C<#sum{N*Size,Part:assign(Part,TR,B,N),partSize(Part,Size)}, C>0.
+%:- binByTR(TR,B), transportCapacity(TR,C), C<#sum{Size,Part:assign(Part,TR,B),partSize(Part,Size)}.
 
-{assign(Part,TR,B,N)} :- binByTR(TR,B),num(N),part(Part).
+{assign(Part,TR,B)} :- binByTR(TR,B),part(Part).
 
-#show assign/4.
-%#maximize{B,N,TR:assign(Part,TR,B,N)}.
+#show assign/3.
+#maximize{B,TR:assign(Part,TR,B)}.
 
  
        
@@ -71,7 +84,7 @@ binByTR(TR,B):- bin(B),transportCapacity(TR,C), C>0.
 
 %#show flow/4.
 %:- flow(From,_,Part,N), offer(Part,From,O), O<N.
-%:- flow(_,To,Part,N), demand(Part,From,D), N>D.
+%:- flow(_,To,Part,N), demand(Part,From,D), N>D.  
 %:- flow(From,Part,(Via1,Via2,To),(N,M,P)), offer(Part,From,O), O<N.
 %:- flow(From,Part,(Via1,Via2,To),(N,M,P)), demand(Part,To,D), P>D.
 

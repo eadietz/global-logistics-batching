@@ -44,9 +44,10 @@ modelAtomTemplates = [
        {'name':'location','filter':lambda s: s.name=='location', 'columns':['location']},
       {'name':'part','filter':lambda s: s.name=='part', 'columns':['part']},
       {'name':'countPartsInL','filter':lambda s: s.name=='countPartsInL', 'columns':['parts','part','amount']},
-      {'name':'transportLink','filter':lambda s: s.name=='transportLink', 'columns':['from','to','parts','tr','freq']},
       {'name':'demandSupply','filter':lambda s: s.name=='demandSupply', 'columns':['part', 'location', 'amount']},
        {'name':'flow','filter':lambda s: s.name=='flow', 'columns':['from' ,'to', 'part', 'amount']},
+       {'name':'routeflow','filter':lambda s: s.name=='routeflow', 'columns':['from' ,'to', 'part', 'amount', 'tr']},
+       {'name':'transportLink','filter':lambda s: s.name=='transportLink', 'columns':['from' ,'to', 'tr', 'amount']},
        {'name':'transportCO2','filter':lambda s: s.name=='transportCO2', 'columns':['tr' ,'cost']},
        {'name':'transportCost','filter':lambda s: s.name=='transportCost', 'columns':['tr' ,'cost']},
        {'name':'transportSpeed','filter':lambda s: s.name=='transportSpeed', 'columns':['tr' ,'cost']}

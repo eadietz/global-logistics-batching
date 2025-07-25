@@ -1,4 +1,23 @@
 
+transportResource(intrasite). 
+transportCO2(intrasite,0). 
+transportCost(intrasite,0).
+transportCapacity(intrasite,2000000000000).
+partTR(Part,intrasite) :- part(Part).
+
+transportCapacity(kugelbake,18000000).
+
+root(eARFullFuselage). 
+
+partTR(section2,TR) :- transportResource(TR).
+
+
+1{flow(From,From,Part,N):offer(Part,From,N)}1 :- offer(Part,From,N), root(Part).
+1{transportLink(From,From,intrasite,N)}1 :- flow(From,From,Part,N), root(Part).
+1{assign(Part,intrasite,N)}1 :- flow(From,From,Part,N),root(Part).
+
+
+
 demandSupply(P,L,0) :- not offer(P,L,_), not demand(P,L,_), part(P), location(L).
 demandSupply(P,L,O) :- offer(P,L,O).
 demandSupply(P,L,D) :- demand(P,L,M), D=M*-1.
@@ -42,8 +61,8 @@ countPartsInL((Head,L),Part,V1+V2) :- countPartsInL(L,Part,V2), countPartsInL(He
 :- transportLink(From,To, L, TR, Freq1), transportLink(From,To, L, TR, Freq2), Freq1!=Freq2.
 
 % symmetry breaking
-numPart(p1,1).
-numPart(p2,2).
+%numPart(p1,1).
+%numPart(p2,2).
 :- packingList((P1,P2),TR,N), numPart(P1,V1), numPart(P2,V2), V1>V2.
 :- packingList((P1,(P2,L)),TR,N), numPart(P1,V1), numPart(P2,V2), V1>V2.
 
