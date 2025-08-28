@@ -47,10 +47,11 @@ modelAtomTemplates = [
       {'name':'demandSupply','filter':lambda s: s.name=='demandSupply', 'columns':['part', 'location', 'amount']},
        {'name':'flow','filter':lambda s: s.name=='flow', 'columns':['from' ,'to', 'part', 'amount']},
        {'name':'routeflow','filter':lambda s: s.name=='routeflow', 'columns':['from' ,'to', 'part', 'amount', 'tr']},
-       {'name':'transportLink','filter':lambda s: s.name=='transportLink', 'columns':['from' ,'to', 'tr', 'amount']},
+       {'name':'transportLink','filter':lambda s: s.name=='transportLink', 'columns':['from' ,'to', 'parts', 'tr', 'freq']},
        {'name':'transportCO2','filter':lambda s: s.name=='transportCO2', 'columns':['tr' ,'cost']},
        {'name':'transportCost','filter':lambda s: s.name=='transportCost', 'columns':['tr' ,'cost']},
-       {'name':'transportSpeed','filter':lambda s: s.name=='transportSpeed', 'columns':['tr' ,'cost']}
+       {'name':'transportSpeed','filter':lambda s: s.name=='transportSpeed', 'columns':['tr' ,'cost']},
+       {'name':'packaging','filter':lambda s: s.name=='packaging', 'columns':['from','to','bin','tr', 'part','freq']}
 ]
 
 def cprint(Text):
@@ -109,7 +110,6 @@ def compute_costs(modelIndex, all_data_frames):
         draw_figures(cost_df)
 
 def check_correctness(modelIndex, all_data_frames):
-    
     demand_supply_df = all_data_frames["demandSupply"]
     locations_df = all_data_frames["location"]
     parts_df = all_data_frames["part"]
@@ -142,8 +142,7 @@ def check_correctness(modelIndex, all_data_frames):
                 print("out_transport_link_df")
                 print(out_transport_link_df)
                 sys.exit()
-            else:
-                cprint(f"Model {modelIndex} seems correct")
+    print(f"Model {modelIndex} seems correct")
             
 
 def get_programs_by_categories(categories: list[str]):
@@ -163,7 +162,7 @@ def solve_clingo(programs, max_models=1):
     print(f'--models={max_models}')
 
     ctl = clingo.Control(
-        ['--warn=no-atom-undefined', f'--models={max_models}', "--opt-mode=optN"])
+        ['--warn=no-atom-undefined', f'--models={max_models}', "--opt-mode=optN", "--parallel-mode=12"])
     print(f'Configuration Keys: {ctl.configuration.solve.keys}')
     ctl.register_observer(myobs)
     myobs.start()#
@@ -184,7 +183,6 @@ def solve_clingo(programs, max_models=1):
 
 def processModel(m, modelIndex):
     global check_correctness_var, compute_costs_var
-    
     if check_correctness_var == True:        
         cprint("check correctness ...")
         check_correctness(modelIndex, all_data_frames)
@@ -212,7 +210,7 @@ def on_model(m: clingo.Model):
 
     if not output_hundredth_model or foundModelIndex % 100 == 0:
         cprint(
-                f"=== New Model [{foundModelIndex}] found after {str(round((time.process_time() - start_time_solving) / 60, 2))} minutes of solving (Optimality proven: {m.optimality_proven}) === ")
+                f"{start_time_solving,time.process_time()} === New Model [{foundModelIndex}] found after {str(round((time.process_time() - start_time_solving) / 60, 2))} minutes of solving (Optimality proven: {m.optimality_proven}) === ")
         
         
         hf.emptyFolder(f"./{outputfolder}/model_{analyzedModelIndex}")
@@ -277,10 +275,10 @@ def run_asp():
     parser.add_argument("-hr", "--heuristics", required=False, default=False, help="Will run different heuristics combinations from heuristics folder")
     parser.add_argument("-j", "--json_file", required=False,default=0, help="reads json file with all required paramters")
     parser.add_argument("-ts", "--timestamp_on_results_folder", required=False,default=True, help="timestamp_on_results_folder")
+    parser.add_argument("-pr", "--program_folder", required=False,default=True, help="folder in which the programs are")
     args = parser.parse_args()
 
     json_file = args.json_file
-
 
     if json_file:
 
@@ -293,12 +291,13 @@ def run_asp():
         example = json_data["example"]
         output_hundredth_model = json_data["output_hundredth_model"]
         heuristics_runs = json_data["runs"]
-        all_results_folder = f'{json_data["all_results_folder"]}'
-        print_details = f'{json_data["print_details"]}'
-        exit_after_optimal_found = f'{json_data["exit_after_optimal_found"]}'
-        draw = f'{json_data["draw"]}'
-        check_correctness_var = f'{json_data["check_correctness"]}'
-        compute_costs_var = f'{json_data["compute_costs"]}'
+        all_results_folder = json_data["all_results_folder"]
+        print_details = json_data["print_details"]
+        exit_after_optimal_found = json_data["exit_after_optimal_found"]
+        draw = json_data["draw"]
+        check_correctness_var = json_data["check_correctness"]
+        compute_costs_var = json_data["compute_costs"]
+        program_folder = json_data["program_folder"]
 
         if json_data["timestamp_on_results_folder"]:
             all_results_folder = f'{all_results_folder}_{datetime.now()}'
@@ -317,13 +316,14 @@ def run_asp():
         all_results_folder = F'{args.outputfolder}'
         check_correctness_var = args.check_correctness
         compute_costs_var = args.compute_costs
+        program_folder = args.program_folder
         if args.timestamp_on_results_folder:
             all_results_folder = f'{all_results_folder}_{datetime.now()}'
 
-    categories = ["lps/example"] if example else ["lps/programs"]
-   
+    categories = [f"lps/{program_folder}"]
+
     hf.emptyFolder(all_results_folder)
-    
+    gc.collect()  
     if heuristics_runs:
         for heuristic_name, program_folders in heuristics_runs.items():
             print(f"{YELLOW}============================== heuristic: {heuristic_name} =============================={RESET}") 

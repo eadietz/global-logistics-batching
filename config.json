@@ -1,5 +1,5 @@
 [
-{
+{   "program_folder": "airbus",
     "timeout": 3600,
     "max_nr_models": 0,
     "show_model": true,
