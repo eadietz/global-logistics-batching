@@ -17,7 +17,7 @@ import helper_functions as hf
 
 import os
 import plotly.graph_objects as go
-import time
+import time 
 import shutil
 import csv
 import json
@@ -51,7 +51,7 @@ modelAtomTemplates = [
        {'name':'transportCO2','filter':lambda s: s.name=='transportCO2', 'columns':['tr' ,'cost']},
        {'name':'transportCost','filter':lambda s: s.name=='transportCost', 'columns':['tr' ,'cost']},
        {'name':'transportSpeed','filter':lambda s: s.name=='transportSpeed', 'columns':['tr' ,'cost']},
-       {'name':'packaging','filter':lambda s: s.name=='packaging', 'columns':['from','to','bin','tr', 'part','freq']}
+       {'name':'packaging','filter':lambda s: s.name=='packaging', 'columns':['binNr','from','to','tr', 'part','freq']}
 ]
 
 def cprint(Text):
@@ -157,7 +157,7 @@ def get_programs_by_categories(categories: list[str]):
     return programs
 
 def solve_clingo(programs, max_models=1):
-    global start_time_solving, produced_at_atoms, ctl
+    global start_solving, produced_at_atoms, ctl
     print('Configuring Clingo ...')
     print(f'--models={max_models}')
 
@@ -171,11 +171,12 @@ def solve_clingo(programs, max_models=1):
         ctl.load(program)
     start_time_grounding = time.process_time()
     ctl.ground([("base", [])])
+    end_time_grounding = time.process_time()
     print(
         f"Grounding programs: {programs} ...\n=== Grounding done ({round((time.process_time() - start_time_grounding) / 60, 2)} minutes, {myobs.number_rules} rules, {myobs.number_choice_rules} choice rules) ===")
-
-    start_time_solving = time.process_time()
-
+    
+    start_solving = time.process_time()
+    print("start solving", start_solving)
     res = ctl.solve(on_model=on_model)
     ctl.cleanup()
     return res
@@ -206,12 +207,10 @@ def showModelAtoms(s, dataName, symbolFilter, columns, index):
 
 
 def on_model(m: clingo.Model):
-    global start_time_solving, output_hundredth_model, foundModelIndex, analyzedModelIndex, outputfolder, exit_after_optimal_found, draw, compute_costs_var
+    global start_solving, output_hundredth_model, foundModelIndex, analyzedModelIndex, outputfolder, exit_after_optimal_found, draw, compute_costs_var
 
     if not output_hundredth_model or foundModelIndex % 100 == 0:
-        cprint(
-                f"{start_time_solving,time.process_time()} === New Model [{foundModelIndex}] found after {str(round((time.process_time() - start_time_solving) / 60, 2))} minutes of solving (Optimality proven: {m.optimality_proven}) === ")
-        
+        cprint(f"=== New Model [{foundModelIndex}] found after {round((time.process_time() - start_solving) / 60, 2)} minutes of solving (Optimality proven: {m.optimality_proven}) === ")
         
         hf.emptyFolder(f"./{outputfolder}/model_{analyzedModelIndex}")
 

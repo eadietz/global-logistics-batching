@@ -1,7 +1,7 @@
 [
 {   "program_folder": "airbus",
     "timeout": 3600,
-    "max_nr_models": 0,
+    "max_nr_models": 3,
     "show_model": true,
     "show_dataframes": true,
     "all_results_folder": "output",
