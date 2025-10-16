@@ -1,5 +1,5 @@
 [
-{   "program_folder": "airbus",
+{   "program_folder": "ex2",
     "timeout": 3600,
     "max_nr_models": 3,
     "show_model": true,

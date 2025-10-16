@@ -234,7 +234,7 @@ def on_model(m: clingo.Model):
 
         if m.optimality_proven:
             print(
-                f"=== Optimal model [{foundModelIndex}] found after {str(round((time.process_time() - start_time_solving) / 60, 2))} minutes of solving (Optimality proven: {m.optimality_proven}) === ")
+                f"=== Optimal model [{foundModelIndex}] found after {str(round((time.process_time() - start_solving) / 60, 2))} minutes of solving (Optimality proven: {m.optimality_proven}) === ")
             
             if exit_after_optimal_found:
                 print(str(m))
@@ -249,7 +249,7 @@ def on_model(m: clingo.Model):
     foundModelIndex += 1
 
 def run_asp(): 
-    global output_hundredth_model, outputfolder, start_time_solving, ctl, \
+    global output_hundredth_model, outputfolder, ctl, \
     foundModelIndex, analyzedModelIndex, showModel, print_details, \
     exit_after_optimal_found, draw, check_correctness_var, compute_costs_var
   
